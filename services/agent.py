@@ -12,6 +12,7 @@ from services.greenhouse import fetch_sources
 from services.matcher import match_job
 from services.profile import load_profile
 from services.state import load_state, save_state
+from services.tracker import upsert_job
 
 
 def load_sources(path: str | Path) -> list[dict[str, Any]]:
@@ -24,6 +25,7 @@ def scan(
     profile_path: str | Path = "profile.json",
     sources_path: str | Path = "config/sources.json",
     state_path: str | Path = "state/jobs.json",
+    tracker_path: str | Path = "state/applications.csv",
     output_root: str | Path = "output/applications",
     include_seen: bool = False,
     write_packets: bool = True,
@@ -60,6 +62,12 @@ def scan(
                 "focus": match.focus,
                 "seen_at": datetime.now(timezone.utc).isoformat(),
             }
+            upsert_job(
+                tracker_path=tracker_path,
+                job=job,
+                match=match,
+                packet_path=str(packet) if packet else None,
+            )
         results.append(
             {
                 "key": job.stable_key,

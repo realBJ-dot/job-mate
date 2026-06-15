@@ -9,6 +9,7 @@ Local job-search agent for scanning public Greenhouse boards, scoring fit agains
 - Scores remaining jobs against `profile.json`.
 - Classifies each job as `backend`, `frontend`, `infra`, or `fullstack`.
 - Writes a tailored CV/resume, cover letter, job snapshot, and fit report under `output/applications/`.
+- Maintains an Excel/Google-Sheets-friendly tracker at `state/applications.csv`.
 
 Actual submission is intentionally not automatic yet. The agent creates application-ready packets so you can review them before submitting, which avoids accidental bad answers and company-site policy issues.
 
@@ -27,6 +28,26 @@ python3 main.py scan
 ```
 
 The first real scan records seen jobs in `state/jobs.json` and drafts packets for strong fits. Dry scoring with `--no-packets` does not update state.
+
+## Track Applications
+
+Real scans update `state/applications.csv` with one row per job. Open that file in Excel, Numbers, or Google Sheets to track:
+
+- company and role
+- job URL
+- fit score and focus area
+- packet path
+- application status
+- dates found/drafted/applied
+- notes
+
+After you submit an application, mark it:
+
+```bash
+python3 main.py mark greenhouse:stripe:7926966 applied --notes "Submitted through company portal"
+```
+
+Useful statuses are `drafted`, `review`, `applied`, `interview`, `offer`, `rejected_by_company`, `withdrawn`, `skip`, and `rejected`.
 
 Score without writing application packets:
 
