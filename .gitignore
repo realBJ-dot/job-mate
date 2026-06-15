@@ -1,0 +1,19 @@
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Python/local tooling
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.dist/
+
+# Agent output/state
+output/
+state/

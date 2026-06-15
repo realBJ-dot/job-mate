@@ -1,0 +1,55 @@
+{
+  "name": "Barney Jin",
+  "contact": {
+    "email": "peiyuan3@illinois.edu",
+    "phone": "+1 (317) 316-7876",
+    "portfolio": "https://realbj-dot.github.io/BarneyJin-Portfolio/",
+    "location": "United States"
+  },
+
+  "education": [
+    {
+      "school": "University of Illinois Urbana-Champaign",
+      "degree": "Master of Computer Science"
+    }
+  ],
+
+  "work_authorization": {
+    "status": "F1 OPT",
+    "requires_future_sponsorship": true
+  },
+
+  "experience_level": "entry-mid",
+  "auto_draft_threshold": 68,
+  "review_threshold": 55,
+
+  "preferred_roles": [
+    "Software Engineer",
+    "Full Stack Engineer",
+    "Frontend Engineer",
+    "Backend Engineer",
+    "Infrastructure Engineer",
+    "Platform Engineer"
+  ],
+
+  "skills": [
+    "React",
+    "NextJS",
+    "TypeScript",
+    "Python",
+    "Java",
+    "AWS",
+    "Firebase",
+    "Terraform",
+    "Docker",
+    "Jenkins",
+    "Prisma",
+    "MongoDB",
+    "Firestore",
+    "Flutter",
+    "SwiftUI",
+    "Golang",
+    "SQL"
+  ],
+  "default_highlight_skills": ["React", "NextJS", "TypeScript", "Python", "AWS", "Terraform", "Firebase"]
+}
