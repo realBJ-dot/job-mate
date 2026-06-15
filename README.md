@@ -89,7 +89,7 @@ python3 main.py scan --json
 
 ## Configure Job Sources
 
-Edit `config/sources.json` and add Greenhouse board tokens:
+Edit `config/sources.json` and add Greenhouse board tokens or LinkedIn searches.
 
 ```json
 {
@@ -100,6 +100,28 @@ Edit `config/sources.json` and add Greenhouse board tokens:
 ```
 
 For a URL like `https://boards.greenhouse.io/stripe`, the board token is `stripe`.
+
+LinkedIn searches use your own browser session:
+
+```bash
+python3 main.py linkedin-login
+python3 main.py scan
+```
+
+The login command opens Chromium and waits for you to sign in manually. It stores the session under `state/linkedin_storage_state.json`, which is ignored by Git. The scanner will not bypass LinkedIn login, captcha, or verification checks; if LinkedIn asks for one, rerun `linkedin-login` and complete it yourself.
+
+Example LinkedIn source:
+
+```json
+{
+  "type": "linkedin",
+  "keywords": "software engineer OR backend engineer OR frontend engineer",
+  "location": "United States",
+  "easy_apply": true,
+  "recent_days": 7,
+  "max_jobs": 25
+}
+```
 
 ## Configure Your Profile
 

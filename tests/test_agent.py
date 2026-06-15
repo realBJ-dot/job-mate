@@ -1,10 +1,12 @@
 import tempfile
 import unittest
 import csv
+import json
 from pathlib import Path
 
 from services.cv_generator import write_application_packet
 from services.greenhouse import JobPosting
+from services.linkedin import fetch_linkedin_source
 from services.matcher import match_job
 from services.tracker import mark_application, upsert_job
 from services.apply import find_tracked_job
@@ -89,6 +91,35 @@ class AgentTests(unittest.TestCase):
                 rows = list(csv.DictReader(handle))
             self.assertEqual(rows[0]["company"], "ExampleCo")
             self.assertEqual(find_tracked_job(tracker, job.stable_key)["title"], "Backend Engineer")
+
+    def test_linkedin_payload_maps_to_job_postings(self):
+        payload = {
+            "jobs": [
+                {
+                    "id": "123",
+                    "company": "LinkedCo",
+                    "title": "Frontend Engineer",
+                    "location": "Remote",
+                    "url": "https://www.linkedin.com/jobs/view/123/",
+                    "content": "React TypeScript UI role",
+                }
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "linkedin_jobs.json"
+            output.write_text(json.dumps(payload), encoding="utf-8")
+            source = {"type": "linkedin", "output": str(output), "max_jobs": 1}
+
+            original = __import__("services.linkedin").linkedin._run_node
+            try:
+                __import__("services.linkedin").linkedin._run_node = lambda args: None
+                jobs = fetch_linkedin_source(source)
+            finally:
+                __import__("services.linkedin").linkedin._run_node = original
+
+            self.assertEqual(jobs[0].stable_key, "linkedin:123")
+            self.assertEqual(jobs[0].company, "LinkedCo")
 
 
 if __name__ == "__main__":

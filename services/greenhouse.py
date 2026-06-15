@@ -65,10 +65,13 @@ def fetch_board(board_token: str, company: str | None = None) -> list[JobPosting
 def fetch_sources(sources: list[dict[str, Any]]) -> list[JobPosting]:
     postings: list[JobPosting] = []
     for source in sources:
-        if source.get("type") != "greenhouse":
-            continue
-        try:
-            postings.extend(fetch_board(source["board"], source.get("company")))
-        except RuntimeError as exc:
-            print(f"Skipping source {source.get('company') or source.get('board')}: {exc}", file=sys.stderr)
+        if source.get("type") == "greenhouse":
+            try:
+                postings.extend(fetch_board(source["board"], source.get("company")))
+            except RuntimeError as exc:
+                print(f"Skipping source {source.get('company') or source.get('board')}: {exc}", file=sys.stderr)
+        elif source.get("type") == "linkedin":
+            from services.linkedin import fetch_linkedin_source
+
+            postings.extend(fetch_linkedin_source(source))
     return postings

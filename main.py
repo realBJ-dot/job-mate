@@ -5,6 +5,7 @@ import json
 
 from services.agent import scan
 from services.apply import run_application
+from services.linkedin import login as linkedin_login
 from services.tracker import VALID_STATUSES, mark_application
 
 
@@ -42,6 +43,9 @@ def main() -> None:
     apply_parser.add_argument("--submit", action="store_true", help="Click Submit only when all required fields are filled.")
     apply_parser.add_argument("--headless", action="store_true")
     apply_parser.add_argument("--json", action="store_true")
+
+    linkedin_parser = subparsers.add_parser("linkedin-login", help="Save a LinkedIn browser session for job search.")
+    linkedin_parser.add_argument("--storage-state", default="state/linkedin_storage_state.json")
 
     args = parser.parse_args()
 
@@ -105,6 +109,8 @@ def main() -> None:
         else:
             missing = ", ".join(result.get("required_unanswered", []))
             print(f"Application needs manual answers before submission: {missing}")
+    elif args.command == "linkedin-login":
+        linkedin_login(args.storage_state)
 
 
 if __name__ == "__main__":

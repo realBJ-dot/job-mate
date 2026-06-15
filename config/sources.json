@@ -9,6 +9,16 @@
       "type": "greenhouse",
       "company": "Anthropic",
       "board": "anthropic"
+    },
+    {
+      "type": "linkedin",
+      "keywords": "software engineer OR backend engineer OR frontend engineer OR full stack engineer",
+      "location": "United States",
+      "easy_apply": true,
+      "recent_days": 7,
+      "max_jobs": 25,
+      "headless": true,
+      "storage_state": "state/linkedin_storage_state.json"
     }
   ]
 }
