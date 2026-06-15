@@ -89,7 +89,7 @@ python3 main.py scan --json
 
 ## Configure Job Sources
 
-Edit `config/sources.json` and add Greenhouse board tokens or LinkedIn searches.
+Edit `config/sources.json` and add Greenhouse board tokens, Greenhouse board lists, or LinkedIn searches.
 
 ```json
 {
@@ -100,6 +100,17 @@ Edit `config/sources.json` and add Greenhouse board tokens or LinkedIn searches.
 ```
 
 For a URL like `https://boards.greenhouse.io/stripe`, the board token is `stripe`.
+
+The default Greenhouse source uses `config/greenhouse_boards.json`, which scans a broader set of live Greenhouse boards instead of only Stripe and Anthropic. Add more targets there:
+
+```json
+{
+  "company": "ExampleCo",
+  "board": "exampleco"
+}
+```
+
+If a company no longer uses Greenhouse or changes its board token, the scanner skips it and keeps going.
 
 LinkedIn searches use your own browser session:
 

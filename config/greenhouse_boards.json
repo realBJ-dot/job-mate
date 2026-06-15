@@ -1,0 +1,27 @@
+{
+  "boards": [
+    { "company": "Airbnb", "board": "airbnb" },
+    { "company": "Anduril", "board": "andurilindustries" },
+    { "company": "Anthropic", "board": "anthropic" },
+    { "company": "Asana", "board": "asana" },
+    { "company": "Brex", "board": "brex" },
+    { "company": "Chime", "board": "chime" },
+    { "company": "Cloudflare", "board": "cloudflare" },
+    { "company": "Coinbase", "board": "coinbase" },
+    { "company": "Databricks", "board": "databricks" },
+    { "company": "Discord", "board": "discord" },
+    { "company": "Dropbox", "board": "dropbox" },
+    { "company": "Figma", "board": "figma" },
+    { "company": "Gusto", "board": "gusto" },
+    { "company": "Instacart", "board": "instacart" },
+    { "company": "Lyft", "board": "lyft" },
+    { "company": "Pinterest", "board": "pinterest" },
+    { "company": "Reddit", "board": "reddit" },
+    { "company": "Robinhood", "board": "robinhood" },
+    { "company": "Scale AI", "board": "scaleai" },
+    { "company": "Stripe", "board": "stripe" },
+    { "company": "Twitch", "board": "twitch" },
+    { "company": "Verkada", "board": "verkada" },
+    { "company": "Waymo", "board": "waymo" }
+  ]
+}

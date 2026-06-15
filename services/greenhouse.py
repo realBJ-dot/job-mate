@@ -34,6 +34,8 @@ def _get_json(url: str, timeout: int = 20) -> dict[str, Any]:
         raise RuntimeError(f"Greenhouse request failed for {url}: HTTP {exc.code}") from exc
     except URLError as exc:
         raise RuntimeError(f"Greenhouse request failed for {url}: {exc.reason}") from exc
+    except OSError as exc:
+        raise RuntimeError(f"Greenhouse request failed for {url}: {exc}") from exc
 
 
 def fetch_board(board_token: str, company: str | None = None) -> list[JobPosting]:
@@ -70,8 +72,25 @@ def fetch_sources(sources: list[dict[str, Any]]) -> list[JobPosting]:
                 postings.extend(fetch_board(source["board"], source.get("company")))
             except RuntimeError as exc:
                 print(f"Skipping source {source.get('company') or source.get('board')}: {exc}", file=sys.stderr)
+        elif source.get("type") == "greenhouse_list":
+            postings.extend(fetch_board_list(source.get("path", "config/greenhouse_boards.json")))
         elif source.get("type") == "linkedin":
             from services.linkedin import fetch_linkedin_source
 
             postings.extend(fetch_linkedin_source(source))
+    return postings
+
+
+def fetch_board_list(path: str) -> list[JobPosting]:
+    with open(path, "r", encoding="utf-8") as handle:
+        boards = json.load(handle).get("boards", [])
+
+    postings: list[JobPosting] = []
+    for board in boards:
+        if board.get("enabled") is False:
+            continue
+        try:
+            postings.extend(fetch_board(board["board"], board.get("company")))
+        except RuntimeError as exc:
+            print(f"Skipping source {board.get('company') or board.get('board')}: {exc}", file=sys.stderr)
     return postings

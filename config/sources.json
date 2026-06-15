@@ -1,14 +1,8 @@
 {
   "sources": [
     {
-      "type": "greenhouse",
-      "company": "Stripe",
-      "board": "stripe"
-    },
-    {
-      "type": "greenhouse",
-      "company": "Anthropic",
-      "board": "anthropic"
+      "type": "greenhouse_list",
+      "path": "config/greenhouse_boards.json"
     },
     {
       "type": "linkedin",

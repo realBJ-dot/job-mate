@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from services.cv_generator import write_application_packet
-from services.greenhouse import JobPosting
+from services.greenhouse import JobPosting, fetch_board_list
 from services.linkedin import fetch_linkedin_source
 from services.matcher import match_job
 from services.tracker import mark_application, upsert_job
@@ -120,6 +120,43 @@ class AgentTests(unittest.TestCase):
 
             self.assertEqual(jobs[0].stable_key, "linkedin:123")
             self.assertEqual(jobs[0].company, "LinkedCo")
+
+    def test_greenhouse_board_list_loads_enabled_boards(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "boards.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "boards": [
+                            {"company": "EnabledCo", "board": "enabled"},
+                            {"company": "DisabledCo", "board": "disabled", "enabled": False},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            import services.greenhouse as greenhouse
+
+            original = greenhouse.fetch_board
+            try:
+                greenhouse.fetch_board = lambda board, company=None: [
+                    JobPosting(
+                        id="1",
+                        company=company or board,
+                        title="Software Engineer",
+                        location="Remote",
+                        url="https://example.com",
+                        content="Python React",
+                        source=f"greenhouse:{board}",
+                    )
+                ]
+                jobs = fetch_board_list(str(path))
+            finally:
+                greenhouse.fetch_board = original
+
+            self.assertEqual(len(jobs), 1)
+            self.assertEqual(jobs[0].company, "EnabledCo")
 
 
 if __name__ == "__main__":
