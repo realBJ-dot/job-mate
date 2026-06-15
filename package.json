@@ -2,7 +2,10 @@
   "name": "auto-job-agent",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test": "playwright test",
+    "apply:greenhouse": "node automation/greenhouse.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

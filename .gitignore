@@ -13,6 +13,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .dist/
+.env
+playwright/.auth/
 
 # Agent output/state
 output/

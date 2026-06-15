@@ -7,6 +7,7 @@ from services.cv_generator import write_application_packet
 from services.greenhouse import JobPosting
 from services.matcher import match_job
 from services.tracker import mark_application, upsert_job
+from services.apply import find_tracked_job
 
 
 PROFILE = {
@@ -87,6 +88,7 @@ class AgentTests(unittest.TestCase):
             with tracker.open("r", encoding="utf-8", newline="") as handle:
                 rows = list(csv.DictReader(handle))
             self.assertEqual(rows[0]["company"], "ExampleCo")
+            self.assertEqual(find_tracked_job(tracker, job.stable_key)["title"], "Backend Engineer")
 
 
 if __name__ == "__main__":

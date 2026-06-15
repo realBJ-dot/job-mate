@@ -4,6 +4,7 @@ import argparse
 import json
 
 from services.agent import scan
+from services.apply import run_application
 from services.tracker import VALID_STATUSES, mark_application
 
 
@@ -32,6 +33,15 @@ def main() -> None:
     mark_parser.add_argument("--notes", default=None)
     mark_parser.add_argument("--applied-date", default=None, help="Override date_applied, YYYY-MM-DD.")
     mark_parser.add_argument("--json", action="store_true")
+
+    apply_parser = subparsers.add_parser("apply", help="Fill a tracked application with Playwright.")
+    apply_parser.add_argument("job_key")
+    apply_parser.add_argument("--tracker", default="state/applications.csv")
+    apply_parser.add_argument("--profile", default="profile.json")
+    apply_parser.add_argument("--answers", default="config/application_answers.json")
+    apply_parser.add_argument("--submit", action="store_true", help="Click Submit only when all required fields are filled.")
+    apply_parser.add_argument("--headless", action="store_true")
+    apply_parser.add_argument("--json", action="store_true")
 
     args = parser.parse_args()
 
@@ -70,6 +80,31 @@ def main() -> None:
             print(json.dumps(row, indent=2))
         else:
             print(f"Updated {row['company']} - {row['title']} to {row['application_status']}.")
+    elif args.command == "apply":
+        result = run_application(
+            job_key=args.job_key,
+            tracker_path=args.tracker,
+            profile_path=args.profile,
+            answers_path=args.answers,
+            submit=args.submit,
+            headless=args.headless,
+        )
+        if result.get("ready_to_submit") and not result.get("submitted"):
+            mark_application(
+                tracker_path=args.tracker,
+                job_key=args.job_key,
+                status="ready_to_submit",
+                notes="Playwright filled the application; final review is pending.",
+            )
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("submitted"):
+            print("Application submitted and tracker marked applied.")
+        elif result.get("ready_to_submit"):
+            print(f"Application is ready for review. Screenshot: {result['screenshot']}")
+        else:
+            missing = ", ".join(result.get("required_unanswered", []))
+            print(f"Application needs manual answers before submission: {missing}")
 
 
 if __name__ == "__main__":

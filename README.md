@@ -11,7 +11,7 @@ Local job-search agent for scanning public Greenhouse boards, scoring fit agains
 - Writes a tailored CV/resume, cover letter, job snapshot, and fit report under `output/applications/`.
 - Maintains an Excel/Google-Sheets-friendly tracker at `state/applications.csv`.
 
-Actual submission is intentionally not automatic yet. The agent creates application-ready packets so you can review them before submitting, which avoids accidental bad answers and company-site policy issues.
+Application submission uses a review-first Playwright workflow. The agent creates application-ready packets and fills supported forms, while requiring an explicit `--submit` flag for the final submission.
 
 Each packet contains:
 
@@ -48,6 +48,26 @@ python3 main.py mark greenhouse:stripe:7926966 applied --notes "Submitted throug
 ```
 
 Useful statuses are `drafted`, `review`, `applied`, `interview`, `offer`, `rejected_by_company`, `withdrawn`, `skip`, and `rejected`.
+
+## Fill Applications With Playwright
+
+Complete `config/application_answers.json` with your LinkedIn URL and truthful default answers. Then fill a tracked application:
+
+```bash
+python3 main.py apply greenhouse:stripe:7926966
+```
+
+This opens Chromium, generates `tailored_cv.pdf`, fills common application fields, uploads the resume, and saves an application screenshot in the packet directory. It does not click Submit by default.
+
+After reviewing the generated screenshot and any unanswered fields, explicitly allow submission:
+
+```bash
+python3 main.py apply greenhouse:stripe:7926966 --submit
+```
+
+The submitter refuses to click Submit when required fields remain unanswered. It also leaves voluntary demographic/EEOC questions untouched.
+
+The Playwright automation does not need an OpenAI API key. An OpenAI integration can later improve job-specific writing and unfamiliar free-text question handling, while still requiring truthful source information.
 
 Score without writing application packets:
 

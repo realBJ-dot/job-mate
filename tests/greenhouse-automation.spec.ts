@@ -1,0 +1,76 @@
+import { expect, test } from '@playwright/test';
+
+const {
+  fillCommonFields,
+  requiredUnansweredFields,
+} = require('../automation/greenhouse.js');
+
+test('fills common application fields and uploads a resume', async ({ page }) => {
+  await page.setContent(`
+    <form>
+      <label for="first_name">First name</label>
+      <input id="first_name" required>
+      <label for="last_name">Last name</label>
+      <input id="last_name" required>
+      <label for="email">Email</label>
+      <input id="email" type="email" required>
+      <label for="phone">Phone</label>
+      <input id="phone">
+      <label for="linkedin">LinkedIn</label>
+      <input id="linkedin">
+      <label for="authorization">Are you legally authorized to work?</label>
+      <select id="authorization" required>
+        <option value="">Select</option>
+        <option>Yes</option>
+        <option>No</option>
+      </select>
+      <label for="sponsorship">Will you require sponsorship?</label>
+      <select id="sponsorship" required>
+        <option value="">Select</option>
+        <option>Yes</option>
+        <option>No</option>
+      </select>
+      <label for="resume">Resume</label>
+      <input id="resume" type="file" required>
+    </form>
+  `);
+
+  await fillCommonFields(
+    page,
+    {
+      name: 'Barney Jin',
+      contact: {
+        email: 'peiyuan3@illinois.edu',
+        phone: '+1 (317) 316-7876',
+        portfolio: 'https://example.com',
+      },
+    },
+    {
+      first_name: 'Barney',
+      last_name: 'Jin',
+      linkedin: 'https://linkedin.com/in/example',
+      requires_sponsorship: true,
+    },
+    'resume/Barney_Jin_SDE_Resume.pdf',
+    'missing-cover-letter.pdf',
+  );
+
+  await expect(page.getByLabel(/first name/i)).toHaveValue('Barney');
+  await expect(page.getByLabel(/last name/i)).toHaveValue('Jin');
+  await expect(page.getByLabel(/email/i)).toHaveValue('peiyuan3@illinois.edu');
+  await expect(page.getByLabel(/authorized/i)).toHaveValue('Yes');
+  await expect(page.getByLabel(/sponsorship/i)).toHaveValue('Yes');
+  await expect(page.getByLabel(/resume/i)).toHaveValue(/Barney_Jin_SDE_Resume\.pdf$/);
+  expect(await requiredUnansweredFields(page)).toEqual([]);
+});
+
+test('reports unknown required questions instead of inventing an answer', async ({ page }) => {
+  await page.setContent(`
+    <label for="custom_question">Describe your favorite production incident</label>
+    <textarea id="custom_question" name="custom_question" required></textarea>
+  `);
+
+  expect(await requiredUnansweredFields(page)).toEqual([
+    'Describe your favorite production incident',
+  ]);
+});

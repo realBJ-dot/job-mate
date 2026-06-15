@@ -1,0 +1,8 @@
+{
+  "first_name": "Barney",
+  "last_name": "Jin",
+  "linkedin": "",
+  "location": "United States",
+  "requires_sponsorship": true,
+  "fallback_resume": "resume/Barney_Jin_SDE_Resume.pdf"
+}
