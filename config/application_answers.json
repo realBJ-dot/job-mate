@@ -55,6 +55,10 @@
       "answer": "Barney"
     },
     {
+      "match": "how did you hear|source",
+      "answer": "LinkedIn"
+    },
+    {
       "match": "school|university|college|institution",
       "answer": "University of Illinois Urbana-Champaign"
     },
@@ -116,10 +120,11 @@
     }
   ],
   "dropdown_answers": [
-    { "match": "authorized.*work|work authorization", "select": "^Yes$" },
+    { "match": "authorized.*work|work authorization|eligible.*work", "select": "^Yes$" },
     { "match": "sponsor|sponsorship|visa", "select": "^Yes$" },
     { "match": "country.*reside|currently reside|reside", "select": "^US$|United States|USA" },
     { "match": "employed by.*Stripe|Stripe affiliate|previously employed", "select": "^No$" },
+    { "match": "former employer|third party|non-solicitation|non-compete", "select": "^No$" },
     { "match": "WhatsApp|opt-in", "select": "^No$" },
     { "match": "city", "select": "Champaign" },
     { "match": "location.*city|candidate-location", "select": "Champaign|Champaign, IL" },
@@ -130,21 +135,22 @@
     { "match": "gender", "select": "^Male$|Man", "sensitive": true },
     { "match": "race|ethnic", "select": "Asian|East Asian", "sensitive": true },
     { "match": "hispanic|latino", "select": "^No$|Not Hispanic|Not Latino", "sensitive": true },
-    { "match": "veteran", "select": "not.*protected|not a protected veteran|I am not a protected veteran", "sensitive": true },
+    { "match": "veteran", "select": "No, I am not a veteran|not.*protected|not a protected veteran|I am not a protected veteran", "sensitive": true },
     { "match": "disabil", "select": "^No$|I do not have a disability|No, I do not", "sensitive": true },
     { "match": "source|how did you hear", "select": "LinkedIn|Company Website|Other" }
   ],
   "radio_answers": [
-    { "match": "authorized.*work|work authorization", "answer": "^Yes$" },
+    { "match": "authorized.*work|work authorization|eligible.*work", "answer": "^Yes$" },
     { "match": "sponsor|sponsorship|visa", "answer": "^Yes$" },
     { "match": "gender", "answer": "^Male$|Man", "sensitive": true },
     { "match": "race|ethnic", "answer": "Asian|East Asian", "sensitive": true },
     { "match": "hispanic|latino", "answer": "^No$|Not Hispanic|Not Latino", "sensitive": true },
-    { "match": "veteran", "answer": "not.*protected|not a protected veteran|I am not a protected veteran", "sensitive": true },
+    { "match": "veteran", "answer": "No, I am not a veteran|not.*protected|not a protected veteran|I am not a protected veteran", "sensitive": true },
     { "match": "disabil", "answer": "^No$|I do not have a disability|No, I do not", "sensitive": true }
   ],
   "checkbox_answers": [
     { "match": "Asian|East Asian", "check": true, "sensitive": true },
+    { "match": "demographic data|collecting, storing, and processing my responses", "check": true, "sensitive": true },
     { "match": "privacy|terms|consent.*process|data.*process", "check": true }
   ]
 }
