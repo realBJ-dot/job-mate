@@ -47,6 +47,18 @@
       "answer": "University of Illinois Urbana-Champaign"
     },
     {
+      "match": "current or previous employer|current employer|previous employer|employer",
+      "answer": "Advanced Cad Cam Service (EngineeringPeople)"
+    },
+    {
+      "match": "current or previous job title|current job title|previous job title|job title",
+      "answer": "Lead Software Engineer"
+    },
+    {
+      "match": "city and state|city.*state|what city.*state.*reside|where.*reside",
+      "answer": "Champaign, IL"
+    },
+    {
       "match": "degree",
       "answer": "Master of Computer Science"
     },
@@ -94,7 +106,11 @@
   "dropdown_answers": [
     { "match": "authorized.*work|work authorization", "select": "^Yes$" },
     { "match": "sponsor|sponsorship|visa", "select": "^Yes$" },
+    { "match": "country.*reside|currently reside|reside", "select": "^US$|United States|USA" },
+    { "match": "employed by.*Stripe|Stripe affiliate|previously employed", "select": "^No$" },
+    { "match": "WhatsApp|opt-in", "select": "^No$" },
     { "match": "city", "select": "Champaign" },
+    { "match": "location.*city|candidate-location", "select": "Champaign|Champaign, IL" },
     { "match": "state|province", "select": "Illinois|IL" },
     { "match": "country", "select": "United States|USA" },
     { "match": "school|university|college|institution", "select": "University of Illinois.*Urbana|University of Illinois Urbana-Champaign|University of Illinois at Urbana-Champaign" },

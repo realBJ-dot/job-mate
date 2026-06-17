@@ -73,6 +73,7 @@ def main() -> None:
     review_parser.add_argument("--answers", default="config/application_answers.json")
     review_parser.add_argument("--min-score", type=int, default=75)
     review_parser.add_argument("--limit", type=int, default=10)
+    review_parser.add_argument("--job-key", help="Open exactly one tracked job for review.")
     review_parser.add_argument("--skip-scan", action="store_true", help="Use existing tracker rows without scanning first.")
     review_parser.add_argument(
         "--status",
@@ -191,7 +192,7 @@ def main() -> None:
                 label = f"{item.get('company')} - {item.get('title')}"
                 print(f"[{item.get('status')}] {item.get('score')} {item.get('job_key')} {label}")
     elif args.command == "review-batch":
-        if not args.skip_scan:
+        if not args.skip_scan and not args.job_key:
             print("Scanning job sources and preparing tailored packets...")
             scan(
                 profile_path=args.profile,
@@ -210,6 +211,7 @@ def main() -> None:
             min_score=args.min_score,
             limit=args.limit,
             statuses=set(args.statuses) if args.statuses else None,
+            job_key=args.job_key,
         )
         if args.json:
             print(json.dumps(results, indent=2))

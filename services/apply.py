@@ -197,9 +197,16 @@ def run_review_batch(
     min_score: int = 75,
     limit: int = 10,
     statuses: set[str] | None = None,
+    job_key: str | None = None,
 ) -> list[dict[str, Any]]:
     statuses = statuses or {"drafted", "review", "ready_to_submit", "needs_manual_answers"}
-    batch = eligible_jobs(tracker_path=tracker_path, min_score=min_score, statuses=statuses, limit=limit)
+    if job_key:
+        job = find_tracked_job(tracker_path, job_key)
+        if job.get("application_status") in TERMINAL_STATUSES or not job.get("packet_path"):
+            return []
+        batch = [job]
+    else:
+        batch = eligible_jobs(tracker_path=tracker_path, min_score=min_score, statuses=statuses, limit=limit)
     jobs = [
         {
             **row,

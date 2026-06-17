@@ -83,6 +83,12 @@ Use existing tracker rows without scanning again:
 python3 main.py review-batch --skip-scan --min-score 75 --limit 10
 ```
 
+Test one application at a time:
+
+```bash
+python3 main.py review-batch --job-key greenhouse:stripe:8009143
+```
+
 Queue the best tracked jobs without opening browsers:
 
 ```bash

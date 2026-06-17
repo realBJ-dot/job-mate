@@ -2,10 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const {
+  applicationScope,
   clickApplyEntry,
   ensureTailoredPdf,
   fillCommonFields,
   fillConfiguredQuestions,
+  formFieldDiagnostics,
   hasHumanVerification,
   requiredUnansweredFields,
 } = require('./greenhouse.js');
@@ -45,20 +47,23 @@ async function preparePage({ browser, context, job, profile, answers }) {
   try {
     await page.goto(result.job_url, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await clickApplyEntry(page);
-    await fillCommonFields(page, profile, answers, resumePath, coverLetterPath);
-    result.configured_answers = await fillConfiguredQuestions(page, answers, {
+    const scope = await applicationScope(page);
+    result.application_frame_url = scope.url();
+    await fillCommonFields(scope, profile, answers, resumePath, coverLetterPath);
+    result.configured_answers = await fillConfiguredQuestions(scope, answers, {
       company: job.company || '',
       title: job.title || '',
       focus: job.focus || '',
       job_url: result.job_url || '',
     });
-    result.fillable_fields = await page.locator('input:not([type="hidden"]), textarea, select').count();
+    result.field_diagnostics = await formFieldDiagnostics(scope);
+    result.fillable_fields = await scope.locator('input:not([type="hidden"]), textarea, select').count();
     result.application_form_detected = Boolean(
-      (await page.getByText(/apply for this job|resume\/cv|resume|cover letter/i).count()) ||
-        (await page.getByLabel(/first name|last name|email/i).count()),
+      (await scope.getByText(/apply for this job|resume\/cv|resume|cover letter/i).count()) ||
+        (await scope.getByLabel(/first name|last name|email/i).count()),
     );
-    result.required_unanswered = await requiredUnansweredFields(page);
-    result.human_verification_required = await hasHumanVerification(page);
+    result.required_unanswered = await requiredUnansweredFields(scope);
+    result.human_verification_required = (await hasHumanVerification(scope)) || (await hasHumanVerification(page));
     result.ready_to_submit =
       result.application_form_detected &&
       result.fillable_fields > 0 &&

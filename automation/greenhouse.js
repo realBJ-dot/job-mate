@@ -69,6 +69,55 @@ function configuredAnswer(entries, label, context) {
   return null;
 }
 
+async function formFieldDiagnostics(page) {
+  return page.locator('input:not([type="hidden"]), textarea, select, [role="combobox"], [role="listbox"], [role="radio"], [role="checkbox"]').evaluateAll((elements) =>
+    elements.map((element) => {
+      const id = element.id;
+      const explicitFieldLabel = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+      const wrappingFieldLabel = element.closest('label');
+      const group = element.closest('.field, .application-question, .custom-question, div');
+      const label =
+        (explicitFieldLabel && explicitFieldLabel.textContent.trim()) ||
+        (wrappingFieldLabel && wrappingFieldLabel.textContent.trim()) ||
+        element.getAttribute('aria-label') ||
+        element.getAttribute('placeholder') ||
+        element.name ||
+        element.id ||
+        (group && group.textContent.trim().slice(0, 220)) ||
+        element.type ||
+        '';
+      const tag = element.tagName.toLowerCase();
+      const role = element.getAttribute('role') || '';
+      const type = element.getAttribute('type') || '';
+      const options = [];
+      if (tag === 'select') {
+        options.push(...Array.from(element.querySelectorAll('option')).map((option) => option.textContent.trim()).filter(Boolean));
+      }
+      if (type === 'radio' || type === 'checkbox' || role === 'radio' || role === 'checkbox') {
+        const id = element.id;
+        const explicit = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+        const wrapping = element.closest('label');
+        if (explicit && explicit.textContent.trim()) options.push(explicit.textContent.trim());
+        if (wrapping && wrapping.textContent.trim()) options.push(wrapping.textContent.trim());
+        if (element.value) options.push(element.value);
+        if (element.getAttribute('aria-label')) options.push(element.getAttribute('aria-label'));
+      }
+      return {
+        tag,
+        type,
+        role,
+        name: element.getAttribute('name') || '',
+        id: element.id || '',
+        label,
+        value: element.value || element.getAttribute('aria-valuetext') || '',
+        required: Boolean(element.required || element.getAttribute('aria-required') === 'true'),
+        checked: Boolean(element.checked || element.getAttribute('aria-checked') === 'true'),
+        options: Array.from(new Set(options)).slice(0, 20),
+      };
+    }),
+  );
+}
+
 function markdownToHtml(markdown) {
   const lines = markdown.split(/\r?\n/);
   const output = [];
@@ -134,6 +183,16 @@ async function ensureTailoredPdf(browser, packetPath, fallbackResume) {
   return existingPdf;
 }
 
+async function applicationScope(page) {
+  const candidates = [page.mainFrame(), ...page.frames().filter((frame) => frame !== page.mainFrame())];
+  for (const frame of candidates) {
+    const fieldCount = await frame.locator('input:not([type="hidden"]), textarea, select, [role="combobox"]').count().catch(() => 0);
+    const formTextCount = await frame.getByText(/apply for this job|resume\/cv|resume|cover letter/i).count().catch(() => 0);
+    if (fieldCount > 0 || formTextCount > 0) return frame;
+  }
+  return page.mainFrame();
+}
+
 async function fillByLabel(page, labelPattern, value) {
   if (!value) return false;
   const locator = page.getByLabel(labelPattern).first();
@@ -158,10 +217,66 @@ async function chooseByLabel(page, labelPattern, answerPattern) {
       await field.selectOption({ label: match });
       return true;
     }
+    const role = await field.evaluate((element) => element.getAttribute('role') || '');
+    if (role === 'combobox') {
+      return chooseCombobox(page, field, answerPattern);
+    }
   } catch {
     return false;
   }
   return false;
+}
+
+async function chooseCombobox(scope, field, answerPattern) {
+  await field.scrollIntoViewIfNeeded().catch(() => {});
+  const control = field.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " select__control ")][1]');
+  if (await control.count().catch(() => 0)) {
+    await control.click().catch(() => {});
+  } else {
+    await field.click().catch(() => {});
+  }
+  await field.press('ArrowDown').catch(() => {});
+  const ownerPage = typeof scope.page === 'function' ? scope.page() : scope;
+  await ownerPage.waitForTimeout(300).catch(() => {});
+  const visibleOption = await matchingVisibleOption(scope, answerPattern);
+  if (visibleOption) {
+    await visibleOption.click();
+    return true;
+  }
+
+  const patternSource = answerPattern.source || String(answerPattern);
+  const firstLiteral = patternSource
+    .replace(/^\^/, '')
+    .replace(/\$$/, '')
+    .split('|')[0]
+    .replace(/\\\s/g, ' ')
+    .replace(/\\\./g, '.')
+    .replace(/[()[\]{}+*?]/g, '')
+    .trim();
+  if (firstLiteral) await field.fill(firstLiteral).catch(() => {});
+  await ownerPage.waitForTimeout(600).catch(() => {});
+
+  const option = await matchingVisibleOption(scope, answerPattern);
+  if (option) {
+    await option.click();
+    return true;
+  }
+
+  await field.press('ArrowDown').catch(() => {});
+  await field.press('Enter').catch(() => {});
+  return false;
+}
+
+async function matchingVisibleOption(scope, answerPattern) {
+  const options = scope
+    .locator('[role="option"], [role="listbox"] li, .select2-results__option, .select__option, [id*="-option-"]')
+    .filter({ hasText: answerPattern });
+  const count = await options.count().catch(() => 0);
+  for (let index = 0; index < count; index += 1) {
+    const option = options.nth(index);
+    if (await option.isVisible().catch(() => false)) return option;
+  }
+  return null;
 }
 
 async function fillConfiguredQuestions(page, answers, context) {
@@ -201,6 +316,18 @@ async function fillConfiguredQuestions(page, answers, context) {
     fills.dropdown += 1;
   }
 
+  const comboboxes = page.locator('input[role="combobox"]');
+  for (let index = 0; index < await comboboxes.count(); index += 1) {
+    const combobox = comboboxes.nth(index);
+    const current = await combobox.inputValue().catch(() => '');
+    if (current && current.trim()) continue;
+    const label = await combobox.evaluate(fieldLabel).catch(() => '');
+    const answer = configuredAnswer(dropdowns, label, context);
+    if (!answer || !answer.value) continue;
+    const filled = await chooseCombobox(page, combobox, new RegExp(answer.value, 'i')).catch(() => false);
+    if (filled) fills.dropdown += 1;
+  }
+
   const radioGroups = await page.locator('input[type="radio"]').evaluateAll((elements) => {
     return Array.from(new Set(elements.map((element) => element.name).filter(Boolean)));
   });
@@ -219,10 +346,16 @@ async function fillConfiguredQuestions(page, answers, context) {
     const options = await group.evaluateAll((elements) =>
       elements.map((element) => {
         const id = element.id;
-        const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+        const explicitLabel = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+        const wrappingLabel = element.closest('label');
         return {
           value: element.value || '',
-          label: (label && label.textContent.trim()) || element.value || '',
+          label:
+            (explicitLabel && explicitLabel.textContent.trim()) ||
+            (wrappingLabel && wrappingLabel.textContent.trim()) ||
+            element.getAttribute('aria-label') ||
+            element.value ||
+            '',
         };
       }),
     );
@@ -271,7 +404,8 @@ async function hasHumanVerification(page) {
 async function uploadResume(page, resumePath) {
   const attach = page.getByText(/^Attach$/).first();
   if (await attach.count()) {
-    const chooserPromise = page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null);
+    const ownerPage = typeof page.page === 'function' ? page.page() : page;
+    const chooserPromise = ownerPage.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null);
     await attach.click().catch(() => {});
     const chooser = await chooserPromise;
     if (chooser) {
@@ -398,15 +532,18 @@ async function main() {
   try {
     await page.goto(args['job-url'], { waitUntil: 'domcontentloaded', timeout: 45000 });
     await clickApplyEntry(page);
-    await fillCommonFields(page, profile, answers, resumePath, coverLetterPath);
-    result.configured_answers = await fillConfiguredQuestions(page, answers, jobMeta);
-    result.fillable_fields = await page.locator('input:not([type="hidden"]), textarea, select').count();
+    const scope = await applicationScope(page);
+    result.application_frame_url = scope.url();
+    await fillCommonFields(scope, profile, answers, resumePath, coverLetterPath);
+    result.configured_answers = await fillConfiguredQuestions(scope, answers, jobMeta);
+    result.field_diagnostics = await formFieldDiagnostics(scope);
+    result.fillable_fields = await scope.locator('input:not([type="hidden"]), textarea, select').count();
     result.application_form_detected = Boolean(
-      (await page.getByText(/apply for this job|resume\/cv|resume|cover letter/i).count()) ||
-        (await page.getByLabel(/first name|last name|email/i).count()),
+      (await scope.getByText(/apply for this job|resume\/cv|resume|cover letter/i).count()) ||
+        (await scope.getByLabel(/first name|last name|email/i).count()),
     );
-    result.required_unanswered = await requiredUnansweredFields(page);
-    result.human_verification_required = await hasHumanVerification(page);
+    result.required_unanswered = await requiredUnansweredFields(scope);
+    result.human_verification_required = (await hasHumanVerification(scope)) || (await hasHumanVerification(page));
     result.ready_to_submit =
       result.application_form_detected && result.fillable_fields > 0 && result.required_unanswered.length === 0;
     if (result.fillable_fields === 0) {
@@ -422,8 +559,8 @@ async function main() {
     await page.screenshot({ path: result.screenshot, fullPage: true });
 
     if (args.submit && result.ready_to_submit) {
-      const submit = page.getByRole('button', { name: /submit application|submit/i }).or(
-        page.locator('input[type="submit"], button[type="submit"]'),
+      const submit = scope.getByRole('button', { name: /submit application|submit/i }).or(
+        scope.locator('input[type="submit"], button[type="submit"]'),
       ).first();
       if (!(await submit.count())) {
         result.error = 'Submit button was not found. The filled application is ready for manual review.';
@@ -459,9 +596,11 @@ if (require.main === module) {
 
 module.exports = {
   ensureTailoredPdf,
+  applicationScope,
   clickApplyEntry,
   fillCommonFields,
   fillConfiguredQuestions,
+  formFieldDiagnostics,
   fieldLabel,
   markdownToHtml,
   requiredUnansweredFields,

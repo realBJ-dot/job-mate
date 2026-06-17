@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const {
+  applicationScope,
   fillCommonFields,
   fillConfiguredQuestions,
   requiredUnansweredFields,
@@ -183,4 +184,36 @@ test('fills explicit demographic and education answers', async ({ page }) => {
   await expect(page.locator('#race')).toHaveValue('Asian');
   await expect(page.locator('input[name="hispanic"][value="No"]')).toBeChecked();
   await expect(page.locator('input[name="disability"][value="No"]')).toBeChecked();
+});
+
+test('detects iframe application scope and fills custom comboboxes', async ({ page }) => {
+  await page.setContent('<iframe id="application"></iframe>');
+  const iframe = await page.locator('#application').elementHandle();
+  const frame = await iframe.contentFrame();
+  await frame.setContent(`
+      <form>
+        <label id="country-label" for="country">Please select the country where you currently reside.</label>
+        <div class="select__control">
+          <input id="country" role="combobox" aria-labelledby="country-label" required>
+        </div>
+        <button type="button" class="select__option" role="option">US</button>
+      </form>
+      <script>
+        document.querySelector('.select__option').addEventListener('click', () => {
+          document.querySelector('#country').value = 'US';
+        });
+      </script>
+  `);
+
+  const scope = await applicationScope(page);
+  const fills = await fillConfiguredQuestions(
+    scope,
+    {
+      dropdown_answers: [{ match: 'country.*reside', select: '^US$|United States|USA' }],
+    },
+    {},
+  );
+
+  expect(fills.dropdown).toBe(1);
+  await expect(scope.locator('#country')).toHaveValue('US');
 });
