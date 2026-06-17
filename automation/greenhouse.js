@@ -25,6 +25,50 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;');
 }
 
+function fieldLabel(element) {
+  const id = element.id;
+  const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+  const wrappingLabel = element.closest('label');
+  const group = element.closest('.field, .application-question, .custom-question, div');
+  return (
+    (label && label.textContent.trim()) ||
+    (wrappingLabel && wrappingLabel.textContent.trim()) ||
+    element.getAttribute('aria-label') ||
+    element.getAttribute('placeholder') ||
+    element.name ||
+    element.id ||
+    (group && group.textContent.trim().slice(0, 220)) ||
+    element.type ||
+    ''
+  );
+}
+
+function renderTemplate(template, context) {
+  return String(template || '').replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => context[key] || '');
+}
+
+function patternMatches(pattern, text) {
+  if (!pattern || !text) return false;
+  return new RegExp(pattern, 'i').test(text);
+}
+
+function isSensitiveQuestion(label) {
+  return /gender|race|ethnic|veteran|disability|sexual orientation|pronoun|demographic/i.test(label || '');
+}
+
+function configuredAnswer(entries, label, context) {
+  for (const entry of entries || []) {
+    if (entry.sensitive !== true && isSensitiveQuestion(label)) continue;
+    if (patternMatches(entry.match, label)) {
+      return {
+        ...entry,
+        value: renderTemplate(entry.answer ?? entry.value ?? entry.select ?? '', context),
+      };
+    }
+  }
+  return null;
+}
+
 function markdownToHtml(markdown) {
   const lines = markdown.split(/\r?\n/);
   const output = [];
@@ -120,6 +164,87 @@ async function chooseByLabel(page, labelPattern, answerPattern) {
   return false;
 }
 
+async function fillConfiguredQuestions(page, answers, context) {
+  const configured = answers.question_answers || [];
+  const dropdowns = answers.dropdown_answers || [];
+  const radios = answers.radio_answers || [];
+  const checks = answers.checkbox_answers || [];
+  const fills = {
+    text: 0,
+    dropdown: 0,
+    radio: 0,
+    checkbox: 0,
+  };
+
+  const textFields = page.locator('textarea, input:not([type]), input[type="text"], input[type="url"]');
+  for (let index = 0; index < await textFields.count(); index += 1) {
+    const field = textFields.nth(index);
+    const current = await field.inputValue().catch(() => '');
+    if (current && current.trim()) continue;
+    const label = await field.evaluate(fieldLabel).catch(() => '');
+    const answer = configuredAnswer(configured, label, context);
+    if (!answer || !answer.value) continue;
+    await field.fill(answer.value).catch(() => {});
+    fills.text += 1;
+  }
+
+  const selects = page.locator('select');
+  for (let index = 0; index < await selects.count(); index += 1) {
+    const select = selects.nth(index);
+    const label = await select.evaluate(fieldLabel).catch(() => '');
+    const answer = configuredAnswer(dropdowns, label, context);
+    if (!answer || !answer.value) continue;
+    const options = await select.locator('option').allTextContents();
+    const match = options.find((option) => new RegExp(answer.value, 'i').test(option.trim()));
+    if (!match) continue;
+    await select.selectOption({ label: match }).catch(() => {});
+    fills.dropdown += 1;
+  }
+
+  const radioGroups = await page.locator('input[type="radio"]').evaluateAll((elements) => {
+    return Array.from(new Set(elements.map((element) => element.name).filter(Boolean)));
+  });
+  for (const name of radioGroups) {
+    const group = page.locator(`input[type="radio"][name="${name.replaceAll('"', '\\"')}"]`);
+    const first = group.first();
+    const label = await first
+      .evaluate((element) => {
+        const fieldset = element.closest('fieldset');
+        const legend = fieldset ? fieldset.querySelector('legend') : null;
+        return (legend && legend.textContent.trim()) || element.name || '';
+      })
+      .catch(() => name);
+    const answer = configuredAnswer(radios, label, context);
+    if (!answer || !answer.value) continue;
+    const options = await group.evaluateAll((elements) =>
+      elements.map((element) => {
+        const id = element.id;
+        const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+        return {
+          value: element.value || '',
+          label: (label && label.textContent.trim()) || element.value || '',
+        };
+      }),
+    );
+    const matchIndex = options.findIndex((option) => new RegExp(answer.value, 'i').test(option.label || option.value));
+    if (matchIndex < 0) continue;
+    await group.nth(matchIndex).check().catch(() => {});
+    fills.radio += 1;
+  }
+
+  const checkboxes = page.locator('input[type="checkbox"]');
+  for (let index = 0; index < await checkboxes.count(); index += 1) {
+    const checkbox = checkboxes.nth(index);
+    const label = await checkbox.evaluate(fieldLabel).catch(() => '');
+    const answer = configuredAnswer(checks, label, context);
+    if (!answer || answer.check !== true) continue;
+    await checkbox.check().catch(() => {});
+    fills.checkbox += 1;
+  }
+
+  return fills;
+}
+
 async function clickApplyEntry(page) {
   const cookie = page.getByRole('button', { name: /accept all|accept cookies|reject all/i }).or(
     page.getByText(/accept all|accept cookies|reject all/i),
@@ -210,16 +335,20 @@ async function requiredUnansweredFields(page) {
         const id = element.id;
         const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
         const wrappingLabel = element.closest('label');
+        const fieldset = element.closest('fieldset');
+        const legend = fieldset ? fieldset.querySelector('legend') : null;
         const group = element.closest('.field, .application-question, .custom-question, div');
         return (
           (label && label.textContent.trim()) ||
+          (legend && legend.textContent.trim()) ||
           (wrappingLabel && wrappingLabel.textContent.trim()) ||
           element.getAttribute('aria-label') ||
           element.getAttribute('placeholder') ||
           element.name ||
           element.id ||
-          (group && group.textContent.trim().slice(0, 140)) ||
-          element.type
+          (group && group.textContent.trim().slice(0, 220)) ||
+          element.type ||
+          ''
         );
       }),
   );
@@ -233,6 +362,12 @@ async function main() {
 
   const profile = JSON.parse(fs.readFileSync(path.resolve(args.profile), 'utf8'));
   const answers = JSON.parse(fs.readFileSync(path.resolve(args.answers), 'utf8'));
+  const jobMeta = {
+    company: args.company || '',
+    title: args.title || '',
+    focus: args.focus || '',
+    job_url: args['job-url'] || '',
+  };
   const resultPath = path.resolve(args.result);
   const packetPath = path.resolve(args.packet);
   fs.mkdirSync(packetPath, { recursive: true });
@@ -261,6 +396,7 @@ async function main() {
     await page.goto(args['job-url'], { waitUntil: 'domcontentloaded', timeout: 45000 });
     await clickApplyEntry(page);
     await fillCommonFields(page, profile, answers, resumePath, coverLetterPath);
+    result.configured_answers = await fillConfiguredQuestions(page, answers, jobMeta);
     result.fillable_fields = await page.locator('input:not([type="hidden"]), textarea, select').count();
     result.application_form_detected = Boolean(
       (await page.getByText(/apply for this job|resume\/cv|resume|cover letter/i).count()) ||
@@ -321,6 +457,8 @@ if (require.main === module) {
 module.exports = {
   ensureTailoredPdf,
   fillCommonFields,
+  fillConfiguredQuestions,
+  fieldLabel,
   markdownToHtml,
   requiredUnansweredFields,
   uploadResume,

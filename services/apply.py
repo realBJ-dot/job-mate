@@ -57,6 +57,12 @@ def run_application(
         str(answers_path),
         "--result",
         str(result_path),
+        "--company",
+        job.get("company", ""),
+        "--title",
+        job.get("title", ""),
+        "--focus",
+        job.get("focus", ""),
     ]
     if submit:
         command.append("--submit")

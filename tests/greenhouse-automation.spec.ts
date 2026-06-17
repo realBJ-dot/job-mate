@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const {
   fillCommonFields,
+  fillConfiguredQuestions,
   requiredUnansweredFields,
 } = require('../automation/greenhouse.js');
 
@@ -95,4 +96,41 @@ test('detects human verification widgets', async ({ page }) => {
   await page.setContent('<div class="g-recaptcha" data-sitekey="test"></div>');
   const { hasHumanVerification } = require('../automation/greenhouse.js');
   expect(await hasHumanVerification(page)).toBeTruthy();
+});
+
+test('fills configured text, dropdown, radio, and consent answers', async ({ page }) => {
+  await page.setContent(`
+    <form>
+      <label for="why">Why are you interested in our company?</label>
+      <textarea id="why" required></textarea>
+      <label for="source">How did you hear about us?</label>
+      <select id="source" required>
+        <option>Select...</option>
+        <option>LinkedIn</option>
+      </select>
+      <fieldset>
+        <legend>Will you require sponsorship?</legend>
+        <label><input type="radio" name="sponsor" value="Yes" required>Yes</label>
+        <label><input type="radio" name="sponsor" value="No" required>No</label>
+      </fieldset>
+      <label><input type="checkbox" id="privacy" required>I consent to privacy terms</label>
+    </form>
+  `);
+
+  const fills = await fillConfiguredQuestions(
+    page,
+    {
+      question_answers: [{ match: 'why.*company', answer: 'I like {company} and {title}.' }],
+      dropdown_answers: [{ match: 'how did you hear', select: 'LinkedIn' }],
+      radio_answers: [{ match: 'sponsor', answer: 'Yes' }],
+      checkbox_answers: [{ match: 'privacy', check: true }],
+    },
+    { company: 'ExampleCo', title: 'Backend Engineer' },
+  );
+
+  expect(fills).toEqual({ text: 1, dropdown: 1, radio: 1, checkbox: 1 });
+  await expect(page.locator('#why')).toHaveValue('I like ExampleCo and Backend Engineer.');
+  await expect(page.locator('#source')).toHaveValue('LinkedIn');
+  await expect(page.locator('input[name="sponsor"][value="Yes"]')).toBeChecked();
+  await expect(page.locator('#privacy')).toBeChecked();
 });

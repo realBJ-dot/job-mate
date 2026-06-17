@@ -1,8 +1,39 @@
 {
   "first_name": "Barney",
   "last_name": "Jin",
-  "linkedin": "",
+  "linkedin": "https://www.linkedin.com/in/barneyjin/",
   "location": "United States",
   "requires_sponsorship": true,
-  "fallback_resume": "resume/Barney_Jin_SDE_Resume.pdf"
+  "fallback_resume": "resume/Barney_Jin_SDE_Resume.pdf",
+  "question_answers": [
+    {
+      "match": "why.*(company|here)|why.*interested|what.*interests.*you|why.*role",
+      "answer": "I am interested in {company} because this {title} role lines up with my experience building production software across backend, frontend, infrastructure, and cloud systems. I am excited by teams that ship reliable products for real users, and I can contribute quickly with my experience in Python, TypeScript, React, AWS, Firebase, Terraform, and full-stack product delivery."
+    },
+    {
+      "match": "additional information|anything else|cover letter",
+      "answer": "I am especially interested in roles where I can combine strong product ownership with hands-on engineering across backend services, frontend experiences, and cloud infrastructure. I have shipped production applications at Advanced Cad Cam Service and John Deere, including Next.js internal tools, Terraform/AWS deployment automation, Firebase serverless workflows, and cross-platform mobile products."
+    },
+    {
+      "match": "work authorization|authorized to work",
+      "answer": "I am currently authorized to work in the United States under F-1 OPT."
+    },
+    {
+      "match": "sponsor|sponsorship|visa",
+      "answer": "Yes, I will require future sponsorship."
+    }
+  ],
+  "dropdown_answers": [
+    { "match": "authorized.*work|work authorization", "select": "^Yes$" },
+    { "match": "sponsor|sponsorship|visa", "select": "^Yes$" },
+    { "match": "country", "select": "United States|USA" },
+    { "match": "source|how did you hear", "select": "LinkedIn|Company Website|Other" }
+  ],
+  "radio_answers": [
+    { "match": "authorized.*work|work authorization", "answer": "^Yes$" },
+    { "match": "sponsor|sponsorship|visa", "answer": "^Yes$" }
+  ],
+  "checkbox_answers": [
+    { "match": "privacy|terms|consent.*process|data.*process", "check": true }
+  ]
 }
