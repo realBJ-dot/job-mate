@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,12 @@ def application_url_for(row: dict[str, str]) -> str:
     if len(parts) == 3 and parts[0] == "greenhouse":
         return f"https://job-boards.greenhouse.io/{parts[1]}/jobs/{parts[2]}"
     return row["job_url"]
+
+
+def review_status_for(result: dict[str, Any]) -> str:
+    if result.get("ready_to_submit"):
+        return "ready_to_submit"
+    return "needs_manual_answers"
 
 
 def run_application(
@@ -177,4 +184,56 @@ def run_application_batch(
             item["error"] = str(exc)
         results.append(item)
 
+    return results
+
+
+def run_review_batch(
+    *,
+    tracker_path: str | Path = "state/applications.csv",
+    profile_path: str | Path = "profile.json",
+    answers_path: str | Path = "config/application_answers.json",
+    min_score: int = 75,
+    limit: int = 10,
+    statuses: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    statuses = statuses or {"drafted", "review", "ready_to_submit", "needs_manual_answers"}
+    batch = eligible_jobs(tracker_path=tracker_path, min_score=min_score, statuses=statuses, limit=limit)
+    jobs = [
+        {
+            **row,
+            "application_url": application_url_for(row),
+        }
+        for row in batch
+    ]
+    if not jobs:
+        return []
+
+    with tempfile.TemporaryDirectory() as tmp:
+        jobs_path = Path(tmp) / "review_jobs.json"
+        result_path = Path(tmp) / "review_results.json"
+        jobs_path.write_text(json.dumps(jobs), encoding="utf-8")
+        command = [
+            "node",
+            "automation/review_batch.js",
+            "--jobs",
+            str(jobs_path),
+            "--profile",
+            str(profile_path),
+            "--answers",
+            str(answers_path),
+            "--result",
+            str(result_path),
+        ]
+        exit_code = os.spawnvp(os.P_WAIT, "node", command)
+        if exit_code != 0:
+            raise RuntimeError(f"Playwright review batch failed with exit code {exit_code}.")
+        results = json.loads(result_path.read_text(encoding="utf-8"))
+
+    for result in results:
+        mark_application(
+            tracker_path=tracker_path,
+            job_key=result["job_key"],
+            status=review_status_for(result),
+            notes="Opened in review-batch session for manual completion.",
+        )
     return results

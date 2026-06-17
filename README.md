@@ -69,6 +69,20 @@ The submitter refuses to click Submit when required fields remain unanswered. It
 
 ## Batch Apply
 
+Most convenient flow: scan, choose top jobs, open tabs, and fill everything possible:
+
+```bash
+python3 main.py review-batch --min-score 75 --limit 10
+```
+
+This keeps Chromium open with one tab per application. Complete any captcha, dropdowns, or custom questions, then click Submit yourself. When finished, press Enter in the terminal to close the browser.
+
+Use existing tracker rows without scanning again:
+
+```bash
+python3 main.py review-batch --skip-scan --min-score 75 --limit 10
+```
+
 Queue the best tracked jobs without opening browsers:
 
 ```bash

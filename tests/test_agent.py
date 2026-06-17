@@ -9,7 +9,7 @@ from services.greenhouse import JobPosting, fetch_board_list
 from services.linkedin import fetch_linkedin_source
 from services.matcher import match_job
 from services.tracker import mark_application, upsert_job
-from services.apply import application_url_for, eligible_jobs, find_tracked_job
+from services.apply import application_url_for, eligible_jobs, find_tracked_job, review_status_for
 
 
 PROFILE = {
@@ -242,6 +242,10 @@ class AgentTests(unittest.TestCase):
             ),
             "https://job-boards.greenhouse.io/coinbase/jobs/7991763",
         )
+
+    def test_review_batch_status_mapping(self):
+        self.assertEqual(review_status_for({"ready_to_submit": True}), "ready_to_submit")
+        self.assertEqual(review_status_for({"ready_to_submit": False}), "needs_manual_answers")
 
 
 if __name__ == "__main__":

@@ -456,6 +456,7 @@ if (require.main === module) {
 
 module.exports = {
   ensureTailoredPdf,
+  clickApplyEntry,
   fillCommonFields,
   fillConfiguredQuestions,
   fieldLabel,
