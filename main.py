@@ -4,7 +4,7 @@ import argparse
 import json
 
 from services.agent import scan
-from services.apply import run_application
+from services.apply import eligible_jobs, run_application, run_application_batch
 from services.linkedin import login as linkedin_login
 from services.tracker import VALID_STATUSES, mark_application
 
@@ -43,6 +43,23 @@ def main() -> None:
     apply_parser.add_argument("--submit", action="store_true", help="Click Submit only when all required fields are filled.")
     apply_parser.add_argument("--headless", action="store_true")
     apply_parser.add_argument("--json", action="store_true")
+
+    batch_parser = subparsers.add_parser("apply-batch", help="Apply to a queue of eligible tracked jobs.")
+    batch_parser.add_argument("--tracker", default="state/applications.csv")
+    batch_parser.add_argument("--profile", default="profile.json")
+    batch_parser.add_argument("--answers", default="config/application_answers.json")
+    batch_parser.add_argument("--min-score", type=int, default=75)
+    batch_parser.add_argument("--limit", type=int, default=10)
+    batch_parser.add_argument(
+        "--status",
+        action="append",
+        dest="statuses",
+        help="Eligible tracker status. Repeat to include multiple. Defaults to drafted/review/ready_to_submit.",
+    )
+    batch_parser.add_argument("--submit", action="store_true", help="Click Submit only when all required fields are filled.")
+    batch_parser.add_argument("--headed", action="store_true", help="Show browser windows instead of running headless.")
+    batch_parser.add_argument("--list-only", action="store_true", help="Print the eligible queue without opening browsers.")
+    batch_parser.add_argument("--json", action="store_true")
 
     linkedin_parser = subparsers.add_parser("linkedin-login", help="Save a LinkedIn browser session for job search.")
     linkedin_parser.add_argument("--storage-state", default="state/linkedin_storage_state.json")
@@ -109,6 +126,49 @@ def main() -> None:
         else:
             missing = ", ".join(result.get("required_unanswered", []))
             print(f"Application needs manual answers before submission: {missing}")
+    elif args.command == "apply-batch":
+        if args.list_only:
+            rows = eligible_jobs(
+                tracker_path=args.tracker,
+                min_score=args.min_score,
+                statuses=set(args.statuses) if args.statuses else None,
+                limit=args.limit,
+            )
+            payload = [
+                {
+                    "job_key": row["job_key"],
+                    "company": row["company"],
+                    "title": row["title"],
+                    "score": row["score"],
+                    "status": row["application_status"],
+                }
+                for row in rows
+            ]
+            if args.json:
+                print(json.dumps(payload, indent=2))
+            else:
+                for row in payload:
+                    print(f"{row['score']} {row['job_key']} {row['company']} - {row['title']} [{row['status']}]")
+            return
+
+        results = run_application_batch(
+            tracker_path=args.tracker,
+            profile_path=args.profile,
+            answers_path=args.answers,
+            min_score=args.min_score,
+            limit=args.limit,
+            statuses=set(args.statuses) if args.statuses else None,
+            submit=args.submit,
+            headless=not args.headed,
+        )
+        if args.json:
+            print(json.dumps(results, indent=2))
+        else:
+            if not results:
+                print("No eligible jobs found for batch application.")
+            for item in results:
+                label = f"{item.get('company')} - {item.get('title')}"
+                print(f"[{item.get('status')}] {item.get('score')} {item.get('job_key')} {label}")
     elif args.command == "linkedin-login":
         linkedin_login(args.storage_state)
 

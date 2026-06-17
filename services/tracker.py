@@ -30,7 +30,17 @@ TRACKER_FIELDS = [
     "notes",
 ]
 
-ACTIVE_STATUSES = {"found", "drafted", "review", "ready_to_submit", "applied", "interview", "offer"}
+ACTIVE_STATUSES = {
+    "found",
+    "drafted",
+    "review",
+    "ready_to_submit",
+    "needs_manual_answers",
+    "apply_failed",
+    "applied",
+    "interview",
+    "offer",
+}
 VALID_STATUSES = ACTIVE_STATUSES | {"skip", "rejected", "rejected_by_company", "withdrawn"}
 
 

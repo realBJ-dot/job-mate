@@ -10,11 +10,23 @@ from typing import Any
 from services.tracker import load_tracker, mark_application
 
 
+TERMINAL_STATUSES = {"applied", "interview", "offer", "rejected_by_company", "withdrawn"}
+DEFAULT_BATCH_STATUSES = {"drafted", "review", "ready_to_submit"}
+
+
 def find_tracked_job(tracker_path: str | Path, job_key: str) -> dict[str, str]:
     for row in load_tracker(tracker_path):
         if row.get("job_key") == job_key:
             return row
     raise KeyError(f"No tracked job found for key: {job_key}")
+
+
+def application_url_for(row: dict[str, str]) -> str:
+    job_key = row.get("job_key", "")
+    parts = job_key.split(":")
+    if len(parts) == 3 and parts[0] == "greenhouse":
+        return f"https://job-boards.greenhouse.io/{parts[1]}/jobs/{parts[2]}"
+    return row["job_url"]
 
 
 def run_application(
@@ -36,7 +48,7 @@ def run_application(
         "node",
         "automation/greenhouse.js",
         "--job-url",
-        job["job_url"],
+        application_url_for(job),
         "--packet",
         packet_path,
         "--profile",
@@ -63,3 +75,100 @@ def run_application(
             notes="Submitted by Playwright automation.",
         )
     return result
+
+
+def eligible_jobs(
+    *,
+    tracker_path: str | Path = "state/applications.csv",
+    min_score: int = 75,
+    statuses: set[str] | None = None,
+    limit: int = 10,
+) -> list[dict[str, str]]:
+    statuses = statuses or DEFAULT_BATCH_STATUSES
+    rows = load_tracker(tracker_path)
+    eligible = []
+    for row in rows:
+        status = row.get("application_status", "")
+        if status in TERMINAL_STATUSES:
+            continue
+        if status not in statuses:
+            continue
+        if row.get("fit_decision") not in {"draft", "review"}:
+            continue
+        if not row.get("packet_path"):
+            continue
+        if int(row.get("score") or 0) < min_score:
+            continue
+        reasons = row.get("reasons", "").lower()
+        title = row.get("title", "").lower()
+        if "clearance_required" in reasons or "clearance" in title:
+            continue
+        eligible.append(row)
+
+    eligible.sort(key=lambda item: int(item.get("score") or 0), reverse=True)
+    return eligible[:limit]
+
+
+def run_application_batch(
+    *,
+    tracker_path: str | Path = "state/applications.csv",
+    profile_path: str | Path = "profile.json",
+    answers_path: str | Path = "config/application_answers.json",
+    min_score: int = 75,
+    limit: int = 10,
+    statuses: set[str] | None = None,
+    submit: bool = False,
+    headless: bool = True,
+) -> list[dict[str, Any]]:
+    batch = eligible_jobs(tracker_path=tracker_path, min_score=min_score, statuses=statuses, limit=limit)
+    results: list[dict[str, Any]] = []
+
+    for row in batch:
+        job_key = row["job_key"]
+        item: dict[str, Any] = {
+            "job_key": job_key,
+            "company": row.get("company"),
+            "title": row.get("title"),
+            "score": row.get("score"),
+        }
+        try:
+            result = run_application(
+                job_key=job_key,
+                tracker_path=tracker_path,
+                profile_path=profile_path,
+                answers_path=answers_path,
+                submit=submit,
+                headless=headless,
+            )
+            item.update(result)
+            if result.get("submitted"):
+                item["status"] = "applied"
+            elif result.get("ready_to_submit"):
+                mark_application(
+                    tracker_path=tracker_path,
+                    job_key=job_key,
+                    status="ready_to_submit",
+                    notes="Batch automation filled the application; final review is pending.",
+                )
+                item["status"] = "ready_to_submit"
+            else:
+                missing = ", ".join(result.get("required_unanswered", []))
+                mark_application(
+                    tracker_path=tracker_path,
+                    job_key=job_key,
+                    status="needs_manual_answers",
+                    notes=f"Batch automation stopped for required fields: {missing}",
+                )
+                item["status"] = "needs_manual_answers"
+        except Exception as exc:
+            mark_application(
+                tracker_path=tracker_path,
+                job_key=job_key,
+                status="apply_failed",
+                notes=str(exc),
+            )
+            item["status"] = "apply_failed"
+            item["error"] = str(exc)
+        results.append(item)
+
+    return results

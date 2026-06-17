@@ -64,6 +64,22 @@ test('fills common application fields and uploads a resume', async ({ page }) =>
   expect(await requiredUnansweredFields(page)).toEqual([]);
 });
 
+test('uploads resume through an attach button file chooser', async ({ page }) => {
+  await page.setContent(`
+    <button type="button" id="attach">Attach</button>
+    <input id="resume" type="file" style="display:none">
+    <script>
+      document.querySelector('#attach').addEventListener('click', () => {
+        document.querySelector('#resume').click();
+      });
+    </script>
+  `);
+
+  const { uploadResume } = require('../automation/greenhouse.js');
+  expect(await uploadResume(page, 'resume/Barney_Jin_SDE_Resume.pdf')).toBeTruthy();
+  await expect(page.locator('#resume')).toHaveValue(/Barney_Jin_SDE_Resume\.pdf$/);
+});
+
 test('reports unknown required questions instead of inventing an answer', async ({ page }) => {
   await page.setContent(`
     <label for="custom_question">Describe your favorite production incident</label>
@@ -73,4 +89,10 @@ test('reports unknown required questions instead of inventing an answer', async 
   expect(await requiredUnansweredFields(page)).toEqual([
     'Describe your favorite production incident',
   ]);
+});
+
+test('detects human verification widgets', async ({ page }) => {
+  await page.setContent('<div class="g-recaptcha" data-sitekey="test"></div>');
+  const { hasHumanVerification } = require('../automation/greenhouse.js');
+  expect(await hasHumanVerification(page)).toBeTruthy();
 });

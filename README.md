@@ -67,6 +67,34 @@ python3 main.py apply greenhouse:stripe:7926966 --submit
 
 The submitter refuses to click Submit when required fields remain unanswered. It also leaves voluntary demographic/EEOC questions untouched.
 
+## Batch Apply
+
+Queue the best tracked jobs without opening browsers:
+
+```bash
+python3 main.py apply-batch --min-score 75 --limit 10 --list-only
+```
+
+Fill applications for the top queue in headless Chromium:
+
+```bash
+python3 main.py apply-batch --min-score 75 --limit 10
+```
+
+Allow final submission only when the form has no required unanswered fields:
+
+```bash
+python3 main.py apply-batch --min-score 75 --limit 10 --submit
+```
+
+The batch runner skips terminal statuses such as `applied`, `interview`, `offer`, `withdrawn`, and `rejected_by_company`. It also skips jobs flagged by the matcher for clearance requirements or other rejection reasons. Unknown required questions are marked `needs_manual_answers` in `state/applications.csv`.
+
+Retry a specific status after improving automation or answers:
+
+```bash
+python3 main.py apply-batch --status apply_failed --limit 5 --submit
+```
+
 The Playwright automation does not need an OpenAI API key. An OpenAI integration can later improve job-specific writing and unfamiliar free-text question handling, while still requiring truthful source information.
 
 Score without writing application packets:

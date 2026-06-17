@@ -9,7 +9,7 @@ from services.greenhouse import JobPosting, fetch_board_list
 from services.linkedin import fetch_linkedin_source
 from services.matcher import match_job
 from services.tracker import mark_application, upsert_job
-from services.apply import find_tracked_job
+from services.apply import application_url_for, eligible_jobs, find_tracked_job
 
 
 PROFILE = {
@@ -157,6 +157,91 @@ class AgentTests(unittest.TestCase):
 
             self.assertEqual(len(jobs), 1)
             self.assertEqual(jobs[0].company, "EnabledCo")
+
+    def test_batch_queue_filters_terminal_and_low_score_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tracker = Path(tmp) / "applications.csv"
+            rows = [
+                {
+                    "job_key": "greenhouse:a:1",
+                    "company": "A",
+                    "title": "Software Engineer",
+                    "location": "Remote",
+                    "focus": "backend",
+                    "score": "88",
+                    "fit_decision": "draft",
+                    "application_status": "drafted",
+                    "date_found": "2026-06-16",
+                    "date_drafted": "2026-06-16",
+                    "date_applied": "",
+                    "job_url": "https://example.com/a",
+                    "packet_path": "output/applications/a",
+                    "matched_skills": "Python",
+                    "reasons": "Matched skills: Python",
+                    "notes": "",
+                },
+                {
+                    "job_key": "greenhouse:b:2",
+                    "company": "B",
+                    "title": "Software Engineer",
+                    "location": "Remote",
+                    "focus": "backend",
+                    "score": "92",
+                    "fit_decision": "draft",
+                    "application_status": "applied",
+                    "date_found": "2026-06-16",
+                    "date_drafted": "2026-06-16",
+                    "date_applied": "2026-06-16",
+                    "job_url": "https://example.com/b",
+                    "packet_path": "output/applications/b",
+                    "matched_skills": "Python",
+                    "reasons": "Matched skills: Python",
+                    "notes": "",
+                },
+                {
+                    "job_key": "greenhouse:c:3",
+                    "company": "C",
+                    "title": "Security Clearance Engineer",
+                    "location": "Remote",
+                    "focus": "backend",
+                    "score": "90",
+                    "fit_decision": "draft",
+                    "application_status": "drafted",
+                    "date_found": "2026-06-16",
+                    "date_drafted": "2026-06-16",
+                    "date_applied": "",
+                    "job_url": "https://example.com/c",
+                    "packet_path": "output/applications/c",
+                    "matched_skills": "Python",
+                    "reasons": "Matched skills: Python",
+                    "notes": "",
+                },
+            ]
+            from services.tracker import save_tracker
+
+            save_tracker(rows, tracker)
+            queued = eligible_jobs(tracker_path=tracker, min_score=75, limit=10)
+
+            self.assertEqual([row["job_key"] for row in queued], ["greenhouse:a:1"])
+
+            retried = eligible_jobs(
+                tracker_path=tracker,
+                min_score=75,
+                statuses={"applied"},
+                limit=10,
+            )
+            self.assertEqual(retried, [])
+
+    def test_greenhouse_application_url_uses_canonical_board_url(self):
+        self.assertEqual(
+            application_url_for(
+                {
+                    "job_key": "greenhouse:coinbase:7991763",
+                    "job_url": "https://www.coinbase.com/careers/positions/7991763?gh_jid=7991763",
+                }
+            ),
+            "https://job-boards.greenhouse.io/coinbase/jobs/7991763",
+        )
 
 
 if __name__ == "__main__":

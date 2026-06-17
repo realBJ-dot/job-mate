@@ -121,13 +121,48 @@ async function chooseByLabel(page, labelPattern, answerPattern) {
 }
 
 async function clickApplyEntry(page) {
-  const apply = page.getByRole('link', { name: /apply/i }).or(
-    page.getByRole('button', { name: /apply/i }),
+  const cookie = page.getByRole('button', { name: /accept all|accept cookies|reject all/i }).or(
+    page.getByText(/accept all|accept cookies|reject all/i),
+  ).first();
+  if (await cookie.count()) {
+    await cookie.click().catch(() => {});
+    await page.waitForTimeout(500);
+  }
+
+  const apply = page.getByRole('link', { name: /apply now|apply for this job|apply/i }).or(
+    page.getByRole('button', { name: /apply now|apply for this job|apply/i }),
   ).first();
   if (await apply.count()) {
     await apply.click();
     await page.waitForLoadState('domcontentloaded').catch(() => {});
+    await page.waitForTimeout(1200);
   }
+}
+
+async function hasHumanVerification(page) {
+  return Boolean(await page.locator('iframe[src*="recaptcha"], .g-recaptcha, [data-sitekey]').count());
+}
+
+async function uploadResume(page, resumePath) {
+  const attach = page.getByText(/^Attach$/).first();
+  if (await attach.count()) {
+    const chooserPromise = page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null);
+    await attach.click().catch(() => {});
+    const chooser = await chooserPromise;
+    if (chooser) {
+      await chooser.setFiles(resumePath);
+      await page.waitForTimeout(1200);
+      return true;
+    }
+  }
+
+  const fileInputs = page.locator('input[type="file"]');
+  if (await fileInputs.count()) {
+    await fileInputs.nth(0).setInputFiles(resumePath);
+    await page.waitForTimeout(1200);
+    return true;
+  }
+  return false;
 }
 
 async function fillCommonFields(page, profile, answers, resumePath, coverLetterPath) {
@@ -145,10 +180,10 @@ async function fillCommonFields(page, profile, answers, resumePath, coverLetterP
   await fillByLabel(page, /(website|portfolio)/i, contact.portfolio);
   await fillByLabel(page, /(current location|location)/i, answers.location || contact.location);
 
-  const resumeInput = page.locator('input[type="file"]').filter({ has: page.locator('xpath=..') }).first();
+  await uploadResume(page, resumePath);
+
   const fileInputs = page.locator('input[type="file"]');
   const count = await fileInputs.count();
-  if (count > 0) await fileInputs.nth(0).setInputFiles(resumePath);
   if (count > 1 && fs.existsSync(coverLetterPath)) await fileInputs.nth(1).setInputFiles(coverLetterPath);
 
   await chooseByLabel(page, /(authorized|legally authorized).*(work|employment)/i, /^(yes|authorized)$/i);
@@ -174,7 +209,18 @@ async function requiredUnansweredFields(page) {
       .map((element) => {
         const id = element.id;
         const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
-        return (label && label.textContent.trim()) || element.name || element.id || element.type;
+        const wrappingLabel = element.closest('label');
+        const group = element.closest('.field, .application-question, .custom-question, div');
+        return (
+          (label && label.textContent.trim()) ||
+          (wrappingLabel && wrappingLabel.textContent.trim()) ||
+          element.getAttribute('aria-label') ||
+          element.getAttribute('placeholder') ||
+          element.name ||
+          element.id ||
+          (group && group.textContent.trim().slice(0, 140)) ||
+          element.type
+        );
       }),
   );
 }
@@ -206,6 +252,7 @@ async function main() {
     resume_path: resumePath,
     submitted: false,
     ready_to_submit: false,
+    fillable_fields: 0,
     required_unanswered: [],
     screenshot: path.join(packetPath, 'application_preview.png'),
   };
@@ -214,20 +261,42 @@ async function main() {
     await page.goto(args['job-url'], { waitUntil: 'domcontentloaded', timeout: 45000 });
     await clickApplyEntry(page);
     await fillCommonFields(page, profile, answers, resumePath, coverLetterPath);
+    result.fillable_fields = await page.locator('input:not([type="hidden"]), textarea, select').count();
+    result.application_form_detected = Boolean(
+      (await page.getByText(/apply for this job|resume\/cv|resume|cover letter/i).count()) ||
+        (await page.getByLabel(/first name|last name|email/i).count()),
+    );
     result.required_unanswered = await requiredUnansweredFields(page);
-    result.ready_to_submit = result.required_unanswered.length === 0;
+    result.human_verification_required = await hasHumanVerification(page);
+    result.ready_to_submit =
+      result.application_form_detected && result.fillable_fields > 0 && result.required_unanswered.length === 0;
+    if (result.fillable_fields === 0) {
+      result.error = 'No application form fields were detected on this page.';
+    }
+    if (!result.application_form_detected) {
+      result.error = 'No application form was detected on this page.';
+    }
+    if (result.human_verification_required) {
+      result.ready_to_submit = false;
+      result.error = 'Human verification is required on this form.';
+    }
     await page.screenshot({ path: result.screenshot, fullPage: true });
 
     if (args.submit && result.ready_to_submit) {
-      const submit = page.getByRole('button', { name: /submit application|submit/i }).first();
-      if (!(await submit.count())) throw new Error('Submit button was not found.');
-      await submit.click();
-      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
-      const confirmation = page.getByText(/thank you|application (was )?submitted|application received/i).first();
-      result.submitted = Boolean(await confirmation.count());
-      if (!result.submitted) {
-        result.required_unanswered = await requiredUnansweredFields(page);
-        result.error = 'Submission confirmation was not detected. The tracker was not marked applied.';
+      const submit = page.getByRole('button', { name: /submit application|submit/i }).or(
+        page.locator('input[type="submit"], button[type="submit"]'),
+      ).first();
+      if (!(await submit.count())) {
+        result.error = 'Submit button was not found. The filled application is ready for manual review.';
+      } else {
+        await submit.click();
+        await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+        const confirmation = page.getByText(/thank you|application (was )?submitted|application received/i).first();
+        result.submitted = Boolean(await confirmation.count());
+        if (!result.submitted) {
+          result.required_unanswered = await requiredUnansweredFields(page);
+          result.error = 'Submission confirmation was not detected. The tracker was not marked applied.';
+        }
       }
       await page.screenshot({ path: path.join(packetPath, 'application_submitted.png'), fullPage: true });
     }
@@ -254,4 +323,6 @@ module.exports = {
   fillCommonFields,
   markdownToHtml,
   requiredUnansweredFields,
+  uploadResume,
+  hasHumanVerification,
 };
