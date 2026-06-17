@@ -244,6 +244,7 @@ class AgentTests(unittest.TestCase):
         )
 
     def test_review_batch_status_mapping(self):
+        self.assertEqual(review_status_for({"submitted": True}), "applied")
         self.assertEqual(review_status_for({"ready_to_submit": True}), "ready_to_submit")
         self.assertEqual(review_status_for({"ready_to_submit": False}), "needs_manual_answers")
 

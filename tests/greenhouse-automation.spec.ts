@@ -134,3 +134,53 @@ test('fills configured text, dropdown, radio, and consent answers', async ({ pag
   await expect(page.locator('input[name="sponsor"][value="Yes"]')).toBeChecked();
   await expect(page.locator('#privacy')).toBeChecked();
 });
+
+test('fills explicit demographic and education answers', async ({ page }) => {
+  await page.setContent(`
+    <form>
+      <label for="school">School or university</label>
+      <input id="school" required>
+      <label for="degree">Degree</label>
+      <input id="degree" required>
+      <label for="race">Race / ethnicity</label>
+      <select id="race" required>
+        <option>Select...</option>
+        <option>Asian</option>
+        <option>White</option>
+      </select>
+      <fieldset>
+        <legend>Are you Hispanic or Latino?</legend>
+        <label><input type="radio" name="hispanic" value="Yes" required>Yes</label>
+        <label><input type="radio" name="hispanic" value="No" required>No</label>
+      </fieldset>
+      <fieldset>
+        <legend>Disability status</legend>
+        <label><input type="radio" name="disability" value="Yes" required>Yes</label>
+        <label><input type="radio" name="disability" value="No" required>No</label>
+      </fieldset>
+    </form>
+  `);
+
+  const fills = await fillConfiguredQuestions(
+    page,
+    {
+      question_answers: [
+        { match: 'school|university', answer: 'University of Illinois Urbana-Champaign' },
+        { match: 'degree', answer: 'Master of Computer Science' },
+      ],
+      dropdown_answers: [{ match: 'race|ethnic', select: 'Asian', sensitive: true }],
+      radio_answers: [
+        { match: 'hispanic|latino', answer: '^No$', sensitive: true },
+        { match: 'disabil', answer: '^No$', sensitive: true },
+      ],
+    },
+    {},
+  );
+
+  expect(fills).toEqual({ text: 2, dropdown: 1, radio: 2, checkbox: 0 });
+  await expect(page.locator('#school')).toHaveValue('University of Illinois Urbana-Champaign');
+  await expect(page.locator('#degree')).toHaveValue('Master of Computer Science');
+  await expect(page.locator('#race')).toHaveValue('Asian');
+  await expect(page.locator('input[name="hispanic"][value="No"]')).toBeChecked();
+  await expect(page.locator('input[name="disability"][value="No"]')).toBeChecked();
+});

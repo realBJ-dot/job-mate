@@ -88,18 +88,34 @@ async function main() {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
   const results = [];
-  for (const job of jobs) {
+  for (const [index, job] of jobs.entries()) {
     const result = await preparePage({ browser, context, job, profile, answers });
     results.push(result);
     console.log(
-      `[${result.ready_to_submit ? 'ready' : 'review'}] ${job.score} ${job.company} - ${job.title} (${job.job_key})`,
+      `[${index + 1}] [${result.ready_to_submit ? 'ready' : 'review'}] ${job.score} ${job.company} - ${job.title} (${job.job_key})`,
     );
   }
-  fs.writeFileSync(resultPath, JSON.stringify(results, null, 2));
   console.log('');
   console.log('Prepared application tabs are open. Finish captcha/dropdowns/custom questions and click Submit manually.');
-  console.log('Press Enter in this terminal when you are done to close the browser.');
-  await new Promise((resolve) => process.stdin.once('data', resolve));
+  console.log('When done, enter submitted job numbers like "1,3,4", "all", or press Enter for none. The tracker will skip submitted jobs next time.');
+  const submittedInput = await new Promise((resolve) => process.stdin.once('data', (data) => resolve(String(data || '').trim())));
+  const submittedIndexes = new Set();
+  if (/^all$/i.test(submittedInput)) {
+    results.forEach((_, index) => submittedIndexes.add(index));
+  } else {
+    for (const piece of submittedInput.split(',')) {
+      const index = Number.parseInt(piece.trim(), 10);
+      if (Number.isInteger(index) && index >= 1 && index <= results.length) submittedIndexes.add(index - 1);
+    }
+  }
+  for (const [index, result] of results.entries()) {
+    if (submittedIndexes.has(index)) {
+      result.submitted = true;
+      result.submitted_by_user = true;
+      result.ready_to_submit = false;
+    }
+  }
+  fs.writeFileSync(resultPath, JSON.stringify(results, null, 2));
   await browser.close();
 }
 

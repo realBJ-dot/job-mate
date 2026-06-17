@@ -304,6 +304,9 @@ async function fillCommonFields(page, profile, answers, resumePath, coverLetterP
   await fillByLabel(page, /linkedin/i, answers.linkedin);
   await fillByLabel(page, /(website|portfolio)/i, contact.portfolio);
   await fillByLabel(page, /(current location|location)/i, answers.location || contact.location);
+  await fillByLabel(page, /^city$/i, answers.city);
+  await fillByLabel(page, /^(state|province)$/i, answers.state);
+  await fillByLabel(page, /^country$/i, answers.country);
 
   await uploadResume(page, resumePath);
 

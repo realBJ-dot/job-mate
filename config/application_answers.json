@@ -2,10 +2,78 @@
   "first_name": "Barney",
   "last_name": "Jin",
   "linkedin": "https://www.linkedin.com/in/barneyjin/",
-  "location": "United States",
+  "location": "Champaign, IL",
+  "city": "Champaign",
+  "state": "IL",
+  "country": "United States",
   "requires_sponsorship": true,
   "fallback_resume": "resume/Barney_Jin_SDE_Resume.pdf",
+  "education": [
+    {
+      "school": "University of Illinois Urbana-Champaign",
+      "school_alias": "University of Illinois at Urbana-Champaign",
+      "degree": "Master of Computer Science",
+      "degree_level": "Master's",
+      "major": "Computer Science",
+      "gpa": "3.8",
+      "start_month": "January",
+      "start_year": "2024",
+      "end_month": "May",
+      "end_year": "2025",
+      "graduation_month": "May",
+      "graduation_year": "2025",
+      "location": "Champaign, IL"
+    },
+    {
+      "school": "University of Illinois Urbana-Champaign",
+      "school_alias": "University of Illinois at Urbana-Champaign",
+      "degree": "Bachelor of Science in Mathematics and Computer Science",
+      "degree_level": "Bachelor's",
+      "major": "Mathematics and Computer Science",
+      "minor": "Statistics",
+      "gpa": "3.6",
+      "start_month": "August",
+      "start_year": "2019",
+      "end_month": "May",
+      "end_year": "2023",
+      "graduation_month": "May",
+      "graduation_year": "2023",
+      "location": "Champaign, IL"
+    }
+  ],
   "question_answers": [
+    {
+      "match": "school|university|college|institution",
+      "answer": "University of Illinois Urbana-Champaign"
+    },
+    {
+      "match": "degree",
+      "answer": "Master of Computer Science"
+    },
+    {
+      "match": "major|field of study|area of study|discipline",
+      "answer": "Computer Science"
+    },
+    {
+      "match": "minor",
+      "answer": "Statistics"
+    },
+    {
+      "match": "gpa",
+      "answer": "3.8"
+    },
+    {
+      "match": "graduation|grad date|completion date",
+      "answer": "May 2025"
+    },
+    {
+      "match": "education.*start|start.*education|start date",
+      "answer": "January 2024"
+    },
+    {
+      "match": "education.*end|end.*education|end date",
+      "answer": "May 2025"
+    },
     {
       "match": "why.*(company|here)|why.*interested|what.*interests.*you|why.*role",
       "answer": "I am interested in {company} because this {title} role lines up with my experience building production software across backend, frontend, infrastructure, and cloud systems. I am excited by teams that ship reliable products for real users, and I can contribute quickly with my experience in Python, TypeScript, React, AWS, Firebase, Terraform, and full-stack product delivery."
@@ -26,14 +94,25 @@
   "dropdown_answers": [
     { "match": "authorized.*work|work authorization", "select": "^Yes$" },
     { "match": "sponsor|sponsorship|visa", "select": "^Yes$" },
+    { "match": "city", "select": "Champaign" },
+    { "match": "state|province", "select": "Illinois|IL" },
     { "match": "country", "select": "United States|USA" },
+    { "match": "school|university|college|institution", "select": "University of Illinois.*Urbana|University of Illinois Urbana-Champaign|University of Illinois at Urbana-Champaign" },
+    { "match": "degree", "select": "Master|Master.*Computer Science|MCS|MS" },
+    { "match": "race|ethnic", "select": "Asian|East Asian", "sensitive": true },
+    { "match": "hispanic|latino", "select": "^No$|Not Hispanic|Not Latino", "sensitive": true },
+    { "match": "disabil", "select": "^No$|I do not have a disability|No, I do not", "sensitive": true },
     { "match": "source|how did you hear", "select": "LinkedIn|Company Website|Other" }
   ],
   "radio_answers": [
     { "match": "authorized.*work|work authorization", "answer": "^Yes$" },
-    { "match": "sponsor|sponsorship|visa", "answer": "^Yes$" }
+    { "match": "sponsor|sponsorship|visa", "answer": "^Yes$" },
+    { "match": "race|ethnic", "answer": "Asian|East Asian", "sensitive": true },
+    { "match": "hispanic|latino", "answer": "^No$|Not Hispanic|Not Latino", "sensitive": true },
+    { "match": "disabil", "answer": "^No$|I do not have a disability|No, I do not", "sensitive": true }
   ],
   "checkbox_answers": [
+    { "match": "Asian|East Asian", "check": true, "sensitive": true },
     { "match": "privacy|terms|consent.*process|data.*process", "check": true }
   ]
 }

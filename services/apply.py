@@ -31,6 +31,8 @@ def application_url_for(row: dict[str, str]) -> str:
 
 
 def review_status_for(result: dict[str, Any]) -> str:
+    if result.get("submitted"):
+        return "applied"
     if result.get("ready_to_submit"):
         return "ready_to_submit"
     return "needs_manual_answers"
@@ -230,10 +232,11 @@ def run_review_batch(
         results = json.loads(result_path.read_text(encoding="utf-8"))
 
     for result in results:
+        submitted = bool(result.get("submitted"))
         mark_application(
             tracker_path=tracker_path,
             job_key=result["job_key"],
             status=review_status_for(result),
-            notes="Opened in review-batch session for manual completion.",
+            notes="Submitted from review-batch session." if submitted else "Opened in review-batch session for manual completion.",
         )
     return results

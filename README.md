@@ -51,7 +51,7 @@ Useful statuses are `drafted`, `review`, `applied`, `interview`, `offer`, `rejec
 
 ## Fill Applications With Playwright
 
-Complete `config/application_answers.json` with your LinkedIn URL and truthful default answers. Then fill a tracked application:
+Complete `config/application_answers.json` with your LinkedIn URL and truthful default answers, including location, education, work authorization, and any demographic fields you explicitly want automation to answer. Sensitive demographic answers are only filled when the matching rule includes `"sensitive": true`. Then fill a tracked application:
 
 ```bash
 python3 main.py apply greenhouse:stripe:7926966
@@ -65,7 +65,7 @@ After reviewing the generated screenshot and any unanswered fields, explicitly a
 python3 main.py apply greenhouse:stripe:7926966 --submit
 ```
 
-The submitter refuses to click Submit when required fields remain unanswered. It also leaves voluntary demographic/EEOC questions untouched.
+The submitter refuses to click Submit when required fields remain unanswered. Voluntary demographic/EEOC fields are only filled when you explicitly configure a sensitive answer rule.
 
 ## Batch Apply
 
@@ -75,7 +75,7 @@ Most convenient flow: scan, choose top jobs, open tabs, and fill everything poss
 python3 main.py review-batch --min-score 75 --limit 10
 ```
 
-This keeps Chromium open with one tab per application. Complete any captcha, dropdowns, or custom questions, then click Submit yourself. When finished, press Enter in the terminal to close the browser.
+This keeps Chromium open with one tab per application. Complete any captcha, dropdowns, or custom questions, then click Submit yourself. When finished, enter the submitted job numbers in the terminal, such as `1,3,4`, or enter `all`. Those rows are marked `applied` in `state/applications.csv`, so future batches skip them.
 
 Use existing tracker rows without scanning again:
 
