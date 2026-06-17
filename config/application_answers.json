@@ -43,6 +43,18 @@
   ],
   "question_answers": [
     {
+      "match": "full legal name|legal name|name.*resume|name.*application",
+      "answer": "Barney Jin"
+    },
+    {
+      "match": "preferred name|chosen name",
+      "answer": "Barney Jin"
+    },
+    {
+      "match": "preferred first name|chosen first name",
+      "answer": "Barney"
+    },
+    {
       "match": "school|university|college|institution",
       "answer": "University of Illinois Urbana-Champaign"
     },
@@ -115,16 +127,20 @@
     { "match": "country", "select": "United States|USA" },
     { "match": "school|university|college|institution", "select": "University of Illinois.*Urbana|University of Illinois Urbana-Champaign|University of Illinois at Urbana-Champaign" },
     { "match": "degree", "select": "Master|Master.*Computer Science|MCS|MS" },
+    { "match": "gender", "select": "^Male$|Man", "sensitive": true },
     { "match": "race|ethnic", "select": "Asian|East Asian", "sensitive": true },
     { "match": "hispanic|latino", "select": "^No$|Not Hispanic|Not Latino", "sensitive": true },
+    { "match": "veteran", "select": "not.*protected|not a protected veteran|I am not a protected veteran", "sensitive": true },
     { "match": "disabil", "select": "^No$|I do not have a disability|No, I do not", "sensitive": true },
     { "match": "source|how did you hear", "select": "LinkedIn|Company Website|Other" }
   ],
   "radio_answers": [
     { "match": "authorized.*work|work authorization", "answer": "^Yes$" },
     { "match": "sponsor|sponsorship|visa", "answer": "^Yes$" },
+    { "match": "gender", "answer": "^Male$|Man", "sensitive": true },
     { "match": "race|ethnic", "answer": "Asian|East Asian", "sensitive": true },
     { "match": "hispanic|latino", "answer": "^No$|Not Hispanic|Not Latino", "sensitive": true },
+    { "match": "veteran", "answer": "not.*protected|not a protected veteran|I am not a protected veteran", "sensitive": true },
     { "match": "disabil", "answer": "^No$|I do not have a disability|No, I do not", "sensitive": true }
   ],
   "checkbox_answers": [

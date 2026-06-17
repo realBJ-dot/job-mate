@@ -14,6 +14,10 @@ test('fills common application fields and uploads a resume', async ({ page }) =>
       <input id="first_name" required>
       <label for="last_name">Last name</label>
       <input id="last_name" required>
+      <label for="legal_name">Full legal name</label>
+      <input id="legal_name" required>
+      <label for="preferred_name">Preferred first name</label>
+      <input id="preferred_name" required>
       <label for="email">Email</label>
       <input id="email" type="email" required>
       <label for="phone">Phone</label>
@@ -57,8 +61,10 @@ test('fills common application fields and uploads a resume', async ({ page }) =>
     'missing-cover-letter.pdf',
   );
 
-  await expect(page.getByLabel(/first name/i)).toHaveValue('Barney');
+  await expect(page.getByLabel('First name', { exact: true })).toHaveValue('Barney');
   await expect(page.getByLabel(/last name/i)).toHaveValue('Jin');
+  await expect(page.getByLabel(/legal name/i)).toHaveValue('Barney Jin');
+  await expect(page.getByLabel(/preferred first name/i)).toHaveValue('Barney');
   await expect(page.getByLabel(/email/i)).toHaveValue('peiyuan3@illinois.edu');
   await expect(page.getByLabel(/authorized/i)).toHaveValue('Yes');
   await expect(page.getByLabel(/sponsorship/i)).toHaveValue('Yes');
@@ -149,6 +155,18 @@ test('fills explicit demographic and education answers', async ({ page }) => {
         <option>Asian</option>
         <option>White</option>
       </select>
+      <label for="gender">Gender</label>
+      <select id="gender" required>
+        <option>Select...</option>
+        <option>Male</option>
+        <option>Female</option>
+      </select>
+      <label for="veteran">Veteran Status</label>
+      <select id="veteran" required>
+        <option>Select...</option>
+        <option>I am not a protected veteran</option>
+        <option>I identify as one or more protected veterans</option>
+      </select>
       <fieldset>
         <legend>Are you Hispanic or Latino?</legend>
         <label><input type="radio" name="hispanic" value="Yes" required>Yes</label>
@@ -169,7 +187,11 @@ test('fills explicit demographic and education answers', async ({ page }) => {
         { match: 'school|university', answer: 'University of Illinois Urbana-Champaign' },
         { match: 'degree', answer: 'Master of Computer Science' },
       ],
-      dropdown_answers: [{ match: 'race|ethnic', select: 'Asian', sensitive: true }],
+      dropdown_answers: [
+        { match: 'gender', select: '^Male$', sensitive: true },
+        { match: 'race|ethnic', select: 'Asian', sensitive: true },
+        { match: 'veteran', select: 'not.*protected veteran', sensitive: true },
+      ],
       radio_answers: [
         { match: 'hispanic|latino', answer: '^No$', sensitive: true },
         { match: 'disabil', answer: '^No$', sensitive: true },
@@ -178,10 +200,12 @@ test('fills explicit demographic and education answers', async ({ page }) => {
     {},
   );
 
-  expect(fills).toEqual({ text: 2, dropdown: 1, radio: 2, checkbox: 0 });
+  expect(fills).toEqual({ text: 2, dropdown: 3, radio: 2, checkbox: 0 });
   await expect(page.locator('#school')).toHaveValue('University of Illinois Urbana-Champaign');
   await expect(page.locator('#degree')).toHaveValue('Master of Computer Science');
   await expect(page.locator('#race')).toHaveValue('Asian');
+  await expect(page.locator('#gender')).toHaveValue('Male');
+  await expect(page.locator('#veteran')).toHaveValue('I am not a protected veteran');
   await expect(page.locator('input[name="hispanic"][value="No"]')).toBeChecked();
   await expect(page.locator('input[name="disability"][value="No"]')).toBeChecked();
 });

@@ -433,6 +433,8 @@ async function fillCommonFields(page, profile, answers, resumePath, coverLetterP
   await fillByLabel(page, /first name/i, firstName);
   await fillByLabel(page, /last name/i, lastName);
   await fillByLabel(page, /^name$/i, profile.name);
+  await fillByLabel(page, /(full|legal).*name|name.*(resume|application)|preferred.*name|chosen.*name/i, profile.name);
+  await fillByLabel(page, /preferred.*first name|chosen.*first name/i, firstName);
   await fillByLabel(page, /email/i, contact.email);
   await fillByLabel(page, /phone/i, contact.phone);
   await fillByLabel(page, /linkedin/i, answers.linkedin);
